@@ -1,0 +1,143 @@
+docker run 옵션
+ - -i: 어플리케이션이 키보드 입력을 필요로 하는경우 호스트의 키보드 입력이 컨테이너로 전달 될 수 있도록 해줌
+ - -t: 컨테이너에 tty를 할당하여 터미널 명령을 가능하도록 해줌
+ - 위 2개는 도커 컨테이너의 shell을 실행할 때 사용하는 옵션
+ - -v: 컨테이너가 호스트의 file system에 접근할 수 있도록 하여 마운트를 가능하게 함
+
+docker env variable
+- -e 옵션으로 환경변수 담을 수 있음
+- docker run  -i -t -e MY_HOST=fastcampus.com ubuntu:focal bash
+- 파일 형태로 환경변수 받기
+==================================
+sample.env
+==================================
+MY_HOST = fastcampus.com
+MY_VAR=123
+MY_VAR2=456
+
+- docker run -i -t --env-file ./sample.env ubuntu:focal env
+
+docker network 목록 확인
+- docker network ls
+
+- none 네트워크는 네트워크 사용이 필요 없거나, 커스텀 네트워크 사용이 필요할 때 활용
+- host 네트워크는 docker가 제공하는 가상 네트워크가 아닌 호스트의 네트워크를 직접 사용
+   -> Grafana 같은 경우 3000번 포트를 사용 -> docker ps로  port 를 보면 빈칸이지만 curl localhost:3000 으로 보면 띄워져 있음
+   -> IP Address도 잡혀있지 않음
+- 네트워크를 지정하지 않을 경우 기본적으로 도커가 제공하는 docker0이라는 bridge 네트워크 사용
+- bridge 네트워크를 만들고 사용하기
+
+"""
+#!/usr/bin/env sh
+
+docker network create --driver=bridge dockerlearning
+
+docker run -d --network=dockerlearning --net-alias=hello nginx
+docker run -d --network=dockerlearning --net-alias=grafana grafana/grafana
+"""
+
+docker 호스트 디렉토리를 container 디렉토리로 마운트
+- -v /opt/html:/usr/share/nginx/html
+- 호스트의 /opt/html 디렉토리를 컨테이너의 Nginx의 웹 루트인 /usr/share/nginx/html로 마운트
+- 마운트를 하면 컨테이너가 삭제되어도 보관하고자 하는 파일은 계속 보존됨
+- 호스트 경로에 파일을 생성하면 컨테이너를 생성하면 컨테이너 마운트 경로에도 동일한 파일이 생기고 반대도 적용됨
+
+볼륨 컨테이너
+- 어플리케이션 컨테이너에 볼륨 마운트를 하는 것이 아닌 데이터만 가지고 있는 컨테이너를 따로 만들 수 있음
+- 어플리케이션 컨테이너가 데이터 컨테이너를 참조하여 데이터를 공유받을 수 있음
+- -v /opt/html:/usr/share/nginx/html \
+  --name web-volume
+- 위의 방식으로 데이터 컨테이너 생성
+
+- --volumes-from web-volume
+하여 위의 데이터 컨테이너 참조하는 어플리케이션 컨테이너 생성
+
+호스트 운영체제의 로그 저장 경로
+- docker run \
+  --log-driver=json-file 로 설정해주어야 ppt 상의 호스트 경로에 로그 파일이 쌓임
+
+도커 이미지 빌드
+- docker p + q 컨테이너 종료 없이 빠져나오기
+
+- 이미지 빌드는 docker file을 이용하는 방법과 이용하지 않는 방법이 있음
+
+1. docker file 이용하지 않고 이미지 빌드
+
+- my_ubuntu 컨테니어로 my-ubuntu:v1 이미지 만들기
+    -> docker commit -a nym0101 =m "Add my_file" my_ubuntu my-ubuntu:v1
+
+2. docker file 사용하여 이미지 빌드
+
+- docker build 명령어를 사용하여 docker file로 이미지 빌드
+    -> -t 옵션은 tag. 빌드한 이미지에 대하여 tag
+    -> 현재 디렉토리를 기준으로 빌드하는데 my_app:v1 이라는 tag를 붙여줘라 -> docker build -t my_app:v1 ./
+    -> -f 옵션은 docker file의 경로. 보통 현재 디렉토리의 docker file을 사용하지만, 다른 docker file을 사용하여 빌드할 때 사용
+          -> docker build -t my_app:v1 -f example/MyDockerfile ./
+
+
+- build context
+    -> 도커 빌드 명령 수행 시 현재 디렉토리를 빌드 컨텍스트 라고 함
+    -> Copy . . -> 현재 디렉토리의 내용을 클러스터 컨테이너 이미지 내부로 복사함. 현재 디렉토리를 알기 위해선 docker daemon이 빌드 컨텍스트 정보를 가지고 있어야 함
+        -> docker build 시 현재 디렉토리의 모든 정보가 docker daemon에게 넘어감
+
+- docker file 문법
+    -> 상세 사항은 docker file document 참고
+    -> ENV는 환경 변수
+    -> ARG는 빌드시에 전달하는 아규먼트
+        -> ARG 사용시엔 SCOPE를 주의
+    -> ARG와 ENV 둘다 있을 때는 ENV 값 적용
+
+- fastcampus-devops\3-docker-kubernetes\3-dockerfile\nodejs-server/Dockerfile 경로 도커 파일에 주석 달아 놓음
+
+- ADD와 COPY는 비슷한 역할을 하나 ADD는 소스 값에 url 사용 가능. 그러나, 사용하게 되면 소스에 변경이 있는지 없는지 확인 어려움
+    -> 그래서, COPY 사용 추천
+
+도커 이미지 경량화 전략
+
+- fastcampus-devops\3-docker-kubernetes\3-dockerfile\slacktree 경로 도커 파일에 주석 달아 놓음
+
+- 컨테이너 레이어 수 줄이기
+    -> docker file의 지시어(RUN 등) 수 와 동일 -> 지시어 수를 줄일 수록 컨테이너 레이어 수도 줄게 됨
+    -> 경량 베이스 이미지 선택 -> debian slim, alpine, stretch
+
+- 멀티 스테이지 빌드
+    -> 빌드시 필요한 의존성은 빌드시에만, release 스테이지 에서는 빌드 결과물만 복사하여 release 이미지의 용량 경량화 가능
+    -> fastcampus-devops\3-docker-kubernetes\3-dockerfile\nodejs-server\Dockerfile.alpine-multi 주석 달아 놓음
+    -> AS 명령어를 사용하여 블록화
+    -> docker build --force-rm 옵션 뭐임
+
+도커 데몬 디버깅
+
+- docker system events
+    -> docker events 도 동일
+    -> 스트리밍 형식으로 발생하는 도커 이벤트 로그를 볼 수 있음
+
+- journalctl -u docker
+    -> 우분투 환경에서 이벤트 로그 확안
+
+- docker system df
+    -> 도커 사용량 확인
+    -> docker system df -v 로 더욱 자세한 확인 가능
+
+- docker system prune
+    -> 사용 되고 있지 않은 컨테이너, 이미지, 캐시 등을 지울 수 있음
+
+- docker stats
+    -> 각각의 container 별로 cpu, memory 사용량, network io 등을 볼 수 있음
+
+도커 컴포즈
+
+- 도커 엔진 및 도커 컴포즈 버전에 따른 호환성 매트릭스 참조할 것
+    -> 공식 문서 상의 compose file reference -> docker composibility matrix 참조
+  
+- 버전 3 부터 Docker Swarm(Kubernetes와 같은 역할)과 호환이 가능하여 docker file의 명령이 docker compose의
+명령인지, Docker Swarm의 명령인지 구분 필요
+
+- docker-compose up
+    -> docker-compose file에 맞게 docker compose 실행
+    -> 지정하지 않을 경우 현재 경로명이 프로젝트 명이 됨
+    -> docker-compose -p my-project up -d : -p 옵션으로 프젝트명 지정 가능, -d 옵션으로 백그라운드 실행
+    -> docker-compose -p my-project ps : docker compose가 프로젝트 단위로 실행되다 보니, -p 옵션으로 해당 프로젝트
+        관련 명령어를 실행하는 경우 다수
+
+

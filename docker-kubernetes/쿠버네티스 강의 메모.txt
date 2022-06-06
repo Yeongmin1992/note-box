@@ -1,0 +1,17 @@
+쿠버네티스 클러스터
+  - kebectl 명령어를 사용하면 kube api server가 명령어 처리를 위한 소통을 함
+
+kebectl 명령형과 선언형 방식
+  - 요즘은, 선언형 방식이 대세
+  - CRDU는 선언형 방식, ssh || logs || port-forwarding과 같은(선언형 방식이 불가능한) 경우는 명령형 방식 추천
+
+kubectl get pod -o wide
+  - -o wide 옵션으로 더욱 상세한 pod 정보 확인 가능
+  - -o wide 옵션에서 나온 ip에 curl을 날려도 응답 없음 -> 현재 ubuntu 운영체제 상에 있지만 
+minikube 환경에 들어가 있지 않기 때문
+  - minikube ssh 명령어로 minikube 환경에서 curl을 날리면 응답 성공 -> kubernetes 클러스터를 구성하는 노드에 접근하는 방식
+  - 같은 클러스터 상의 특정 pod에 접근하는 방식으로도 curl 응답 받을 수 있음 -> kubectl run -i -t debug --image=posqui0/doraemon bash
+
+멀티 컨테이너 파드와 사이드카 패턴
+  - 특정 파드 로그 확인 : kubectl logs pod/hello -c debug
+    -> 멀티 컨테이너 파드에서는 -c 옵션으로 컨테이너 지정을 해줘야 함
