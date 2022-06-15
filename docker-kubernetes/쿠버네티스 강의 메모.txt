@@ -10,8 +10,44 @@ kubectl get pod -o wide
   - -o wide 옵션에서 나온 ip에 curl을 날려도 응답 없음 -> 현재 ubuntu 운영체제 상에 있지만 
 minikube 환경에 들어가 있지 않기 때문
   - minikube ssh 명령어로 minikube 환경에서 curl을 날리면 응답 성공 -> kubernetes 클러스터를 구성하는 노드에 접근하는 방식
-  - 같은 클러스터 상의 특정 pod에 접근하는 방식으로도 curl 응답 받을 수 있음 -> kubectl run -i -t debug --image=posqui0/doraemon bash
+  - 같은 클러스터 상의 특정 pod에 접근하는 방식으로도 curl 응답 받을 수 있음 -> kubectl run -i -t debug --image=posquit0/doraemon bash
 
 멀티 컨테이너 파드와 사이드카 패턴
   - 특정 파드 로그 확인 : kubectl logs pod/hello -c debug
     -> 멀티 컨테이너 파드에서는 -c 옵션으로 컨테이너 지정을 해줘야 함
+
+ReplicaSet
+  - ReplicaSet Controller가 Control Plane에 존재 
+    -> spec.selector에 대응되는 파드의 수가 spec.replicas와 동일한지 지속적으로 검사하고, 수를 유지
+      -> ReplicaSet에서 관리하는 pod인지의 여부 까지는 검사하지 않음
+        -> 서로 다른 이미지로 만들어진 pod에 동일 label을 주면 이미지로 구분 못하고, label로만 관리
+  - fastcampus-devops/3-docker-kubernetes/7-k8s-replicatset/replicatset.yaml 참조
+  - watch kubectl get pod --show-labels -> labels 까지의 로그를 확인할 수 있음
+  - kubectl describe replicasets hello -> replica set의 정보 확인 가능
+  - kubectl get rs -> replica set의 정보 확인 가능
+  - kubectl describe replicasets hello -> 더 자세히 replica set의 정보 확인 가능
+  - kubectl edit pod {pod name} -> pod 수정
+
+Deployment
+
+  - Rolling Update
+   -> maxSurge : 해당 deployment의 pod 수 는 spec.replicas + maxSurge의 값을 넘을 수 없음
+   -> maxUnavailabe : pod의 수가 spec.relicas - maxUnavaliable 밑으로 떨어질 수 없음
+      -> maxSurge 1이고, maxUnavlialble이 0일 때, 기존 pod 수(spec.replicas)가 10일 경우 새 레플리카로 업데이트 시 
+          1씩 새로운 pod를 만들고, 기존 pod 1개를 삭제하는 방식으로 10개를 업데이트 -> node 자원 초과 발생 가능성 있음(10개
+          pod로 운영 되던 것이 11개 pod로 운영되는 경우가 있음으로) but 트래픽 처리가 안정적
+      -> maxSurge 0이고, maxUnavlialble이 1일 때, 기존 pod 수(spec.replicas)가 10일 경우 새 레플리카로 업데이트 시 
+          기존 pod 1개를 삭제하고, 새 pod 1를 생성하는 방식으로 10개를 업데이트 -> node 자원 초과가 발생하지 않음
+          but 트래픽이 많은 상황이었다면 10개로 처리하던 것을 9개로 처리하는 상황이 생겨 자원 부족이 발생 할 수 있음
+
+Service
+
+  - L4(IP/Port) 기반 로드밸런서 기능 수행
+    -> Ingress는 L7(Application Layer)에서 로드밸런서 기능 수행
+
+  - 쿠버네티스 cluster 내부에 있는 etcd를 통해서 내부 도메인까지 관리 
+
+  - 서비스의 종류
+    1. Cluster IP(기본 값) 중요!!
+      - 외부 트래픽 못 받음
+      - 내부에서 트래픽을 받아 서비스가 관리하는 노드들에게 로드를 분산
